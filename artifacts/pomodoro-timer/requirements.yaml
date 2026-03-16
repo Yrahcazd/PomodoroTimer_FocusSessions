@@ -1,0 +1,12 @@
+packages:
+  "framer-motion": "For fluid layout animations, transitions between setup and timer states, and glassmorphism effects"
+  "clsx": "For conditional class merging"
+  "tailwind-merge": "For conditional class merging"
+  "lucide-react": "For crisp, modern iconography in controls (play, pause, reset, skip)"
+
+images: []
+
+notes:
+  - "The app operates entirely client-side with no backend dependencies."
+  - "Timer logic uses Date.now() diffing to avoid setInterval drift."
+  - "Web Audio API is used for chimes, requiring user interaction before the first sound."
