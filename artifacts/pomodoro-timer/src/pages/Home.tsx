@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, RotateCcw, SkipForward } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, Moon, Sun, Palette, X } from 'lucide-react';
 import { usePomodoro } from '../hooks/use-pomodoro';
 import { Slider } from '../components/ui/slider';
 import { clsx, type ClassValue } from 'clsx';
@@ -9,6 +9,30 @@ import { twMerge } from 'tailwind-merge';
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+// Colors for customization
+const WORK_COLORS = [
+  { name: 'Coral', value: '355 85% 60%', hex: '#f43f5e' },
+  { name: 'Amber', value: '45 93% 47%', hex: '#f59e0b' },
+  { name: 'Violet', value: '262 83% 58%', hex: '#8b5cf6' },
+  { name: 'Teal', value: '173 80% 40%', hex: '#14b8a6' },
+  { name: 'Rose', value: '333 71% 51%', hex: '#e11d48' },
+];
+
+const BREAK_COLORS = [
+  { name: 'Sky', value: '210 80% 55%', hex: '#3b82f6' },
+  { name: 'Green', value: '142 71% 45%', hex: '#22c55e' },
+  { name: 'Indigo', value: '239 84% 67%', hex: '#6366f1' },
+  { name: 'Slate', value: '215 16% 47%', hex: '#64748b' },
+  { name: 'Lime', value: '84 81% 44%', hex: '#84cc16' },
+];
+
+const BACKGROUNDS = [
+  { name: 'Default', class: 'bg-background', label: 'Default', color: '#f8fafc' },
+  { name: 'Fog', class: 'bg-gradient-to-br from-orange-50 to-orange-100 dark:from-stone-900 dark:to-orange-950', label: 'Fog', color: '#ffedd5' },
+  { name: 'Forest', class: 'bg-gradient-to-br from-green-50 to-green-100 dark:from-stone-900 dark:to-green-950', label: 'Forest', color: '#dcfce7' },
+  { name: 'Night', class: 'bg-gradient-to-br from-indigo-900 to-slate-900 dark:from-indigo-950 dark:to-slate-950', label: 'Night', color: '#312e81' },
+];
 
 export default function Home() {
   const {
@@ -27,17 +51,167 @@ export default function Home() {
     getDuration
   } = usePomodoro();
 
+  // Dark Mode State
+  const [isDark, setIsDark] = useState(false);
+  
+  // Customization State
+  const [isCustomizing, setIsCustomizing] = useState(false);
+  const [workColor, setWorkColor] = useState(WORK_COLORS[0].value);
+  const [breakColor, setBreakColor] = useState(BREAK_COLORS[0].value);
+  const [background, setBackground] = useState(BACKGROUNDS[0].name);
+
+  // Initialize Theme
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('pomodoro-theme');
+    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      setIsDark(true);
+      document.documentElement.classList.add('dark');
+    } else {
+      setIsDark(false);
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newDark = !isDark;
+    setIsDark(newDark);
+    if (newDark) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('pomodoro-theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('pomodoro-theme', 'light');
+    }
+  };
+
+  // Initialize Customization
+  useEffect(() => {
+    const savedCustomization = localStorage.getItem('pomodoro-customization');
+    if (savedCustomization) {
+      try {
+        const parsed = JSON.parse(savedCustomization);
+        if (parsed.workColor) setWorkColor(parsed.workColor);
+        if (parsed.breakColor) setBreakColor(parsed.breakColor);
+        if (parsed.background) setBackground(parsed.background);
+      } catch (e) {
+        console.error("Failed to parse customization", e);
+      }
+    }
+  }, []);
+
+  // Apply colors
+  useEffect(() => {
+    document.documentElement.style.setProperty('--primary', workColor);
+    document.documentElement.style.setProperty('--secondary', breakColor);
+    
+    // Save to localStorage
+    localStorage.setItem('pomodoro-customization', JSON.stringify({
+      workColor,
+      breakColor,
+      background
+    }));
+  }, [workColor, breakColor, background]);
+
+  const bgClass = BACKGROUNDS.find(b => b.name === background)?.class || BACKGROUNDS[0].class;
+
   const progress = status === 'setup' ? 1 : timeRemaining / Math.max(totalCurrentDuration, 1);
   const ringColor = status === 'setup' ? 'text-primary/20' : (phase === 'work' ? 'text-primary' : 'text-secondary');
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-8 selection:bg-primary/20">
+    <div className={cn("min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-8 selection:bg-primary/20 transition-colors duration-500", bgClass)}>
       <motion.div 
         layout
-        className="w-full max-w-md bg-white/60 backdrop-blur-xl border border-black/[0.04] rounded-[2.5rem] shadow-2xl overflow-hidden relative z-10 p-6 sm:p-10"
+        className="w-full max-w-md bg-card/60 backdrop-blur-xl border border-border/50 rounded-[2.5rem] shadow-2xl overflow-hidden relative z-10 p-6 sm:p-10"
       >
+        {/* Top Header Buttons */}
+        <div className="absolute top-6 left-6 right-6 flex justify-between items-center z-20">
+          <button 
+            onClick={() => setIsCustomizing(!isCustomizing)}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-foreground/5 text-foreground/60 hover:bg-foreground/10 hover:text-foreground transition-colors"
+            aria-label="Personnaliser"
+          >
+            {isCustomizing ? <X className="w-5 h-5" /> : <Palette className="w-5 h-5" />}
+          </button>
+          
+          <button 
+            onClick={toggleTheme}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-foreground/5 text-foreground/60 hover:bg-foreground/10 hover:text-foreground transition-colors"
+            aria-label="Toggle Dark Mode"
+          >
+            {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+        </div>
+
+        {/* Customization Panel */}
+        <AnimatePresence>
+          {isCustomizing && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0, y: -20 }}
+              animate={{ opacity: 1, height: 'auto', y: 0 }}
+              exit={{ opacity: 0, height: 0, y: -20 }}
+              className="w-full pt-12 pb-4 flex flex-col gap-6"
+            >
+              <div>
+                <h4 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider mb-3 px-1">Couleur Travail</h4>
+                <div className="flex gap-3">
+                  {WORK_COLORS.map(c => (
+                    <button
+                      key={c.name}
+                      onClick={() => setWorkColor(c.value)}
+                      className={cn(
+                        "w-8 h-8 rounded-full transition-all duration-200 border-2",
+                        workColor === c.value ? "scale-110 border-foreground ring-2 ring-background" : "border-transparent hover:scale-105"
+                      )}
+                      style={{ backgroundColor: c.hex }}
+                      title={c.name}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider mb-3 px-1">Couleur Pause</h4>
+                <div className="flex gap-3">
+                  {BREAK_COLORS.map(c => (
+                    <button
+                      key={c.name}
+                      onClick={() => setBreakColor(c.value)}
+                      className={cn(
+                        "w-8 h-8 rounded-full transition-all duration-200 border-2",
+                        breakColor === c.value ? "scale-110 border-foreground ring-2 ring-background" : "border-transparent hover:scale-105"
+                      )}
+                      style={{ backgroundColor: c.hex }}
+                      title={c.name}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold text-foreground/50 uppercase tracking-wider mb-3 px-1">Arrière-plan</h4>
+                <div className="flex gap-3">
+                  {BACKGROUNDS.map(b => (
+                    <button
+                      key={b.name}
+                      onClick={() => setBackground(b.name)}
+                      className={cn(
+                        "w-10 h-10 rounded-xl transition-all duration-200 border-2 shadow-sm",
+                        background === b.name ? "scale-110 border-foreground ring-2 ring-background" : "border-transparent hover:scale-105"
+                      )}
+                      style={{ backgroundColor: b.color }}
+                      title={b.label}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              <div className="h-px w-full bg-border/50 mt-2 mb-[-1rem]"></div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Timer Display */}
-        <div className="relative flex flex-col items-center justify-center py-8">
+        <div className={cn("relative flex flex-col items-center justify-center py-8 transition-all duration-500", isCustomizing ? "pt-10" : "")}>
           <div className="relative w-64 h-64 sm:w-72 sm:h-72 flex items-center justify-center">
             {/* Background Ring */}
             <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none">
@@ -46,7 +220,7 @@ export default function Home() {
                 cy="50%"
                 r="48%"
                 fill="none"
-                className="stroke-black/5"
+                className="stroke-black/5 dark:stroke-white/5"
                 strokeWidth="12"
               />
               {/* Foreground Animated Ring */}
@@ -161,7 +335,7 @@ export default function Home() {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="w-full flex flex-col gap-6 pt-4 border-t border-black/5"
+                className="w-full flex flex-col gap-6 pt-4 border-t border-border/50"
               >
                 <Slider
                   label="Temps de travail initial (min)"
@@ -212,7 +386,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="w-full max-w-md mt-6 bg-white/40 backdrop-blur-md rounded-[2rem] p-6 shadow-sm border border-black/[0.02]"
+            className="w-full max-w-md mt-6 bg-card/40 backdrop-blur-md rounded-[2rem] p-6 shadow-sm border border-border/50"
           >
             <h3 className="text-sm font-semibold text-foreground/50 uppercase tracking-wider mb-4 px-2">
               Cycles à venir
@@ -237,13 +411,13 @@ export default function Home() {
                     key={c}
                     className={cn(
                       "flex items-center justify-between p-3 rounded-2xl transition-colors",
-                      isCurrent ? "bg-white shadow-sm ring-1 ring-black/5" : "hover:bg-white/50"
+                      isCurrent ? "bg-card shadow-sm ring-1 ring-border/50" : "hover:bg-card/50"
                     )}
                   >
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold",
-                        isCurrent ? "bg-foreground text-white" : "bg-foreground/5 text-foreground/50"
+                        isCurrent ? "bg-foreground text-background" : "bg-foreground/5 text-foreground/50"
                       )}>
                         {c}
                       </div>
