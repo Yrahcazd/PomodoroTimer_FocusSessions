@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Pause, RotateCcw, SkipForward, Moon, Sun, Palette, X } from 'lucide-react';
+import { Play, Pause, RotateCcw, SkipForward, Moon, Sun, Palette, X, Zap } from 'lucide-react';
 import { usePomodoro } from '../hooks/use-pomodoro';
+import { useRewards } from '../hooks/use-rewards';
 import { Slider } from '../components/ui/slider';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -50,6 +51,21 @@ export default function Home() {
     formatTime,
     getDuration
   } = usePomodoro();
+
+  const {
+    rewards,
+    showCelebration,
+    completeWorkSession,
+    resetRewards,
+    formatFocusTime
+  } = useRewards();
+
+  // Track when a work session completes
+  useEffect(() => {
+    if (status === 'running' && phase === 'work' && timeRemaining === 0) {
+      completeWorkSession(totalCurrentDuration);
+    }
+  }, [status, phase, timeRemaining, totalCurrentDuration, completeWorkSession]);
 
   // Dark Mode State
   const [isDark, setIsDark] = useState(false);
@@ -441,6 +457,79 @@ export default function Home() {
                   </div>
                 );
               })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Celebration Effect */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.5 }}
+            className="fixed inset-0 pointer-events-none flex items-center justify-center"
+          >
+            <motion.div
+              animate={{ y: -100, opacity: 0 }}
+              transition={{ duration: 1.5 }}
+              className="text-6xl"
+            >
+              ✨
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Rewards Stats Panel */}
+      <AnimatePresence>
+        {status === 'setup' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="w-full max-w-md mt-6 bg-card/60 backdrop-blur-md rounded-[2rem] p-6 shadow-sm border border-border/50"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-foreground/50 uppercase tracking-wider flex items-center gap-2">
+                <Zap className="w-4 h-4" />
+                Vos récompenses
+              </h3>
+              {rewards.sessionsCompleted > 0 && (
+                <button
+                  onClick={() => resetRewards()}
+                  className="text-xs text-foreground/40 hover:text-foreground/60 transition-colors"
+                >
+                  Réinitialiser
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-primary/10 rounded-2xl p-4 text-center">
+                <div className="text-2xl font-bold text-primary">
+                  {rewards.sessionsCompleted}
+                </div>
+                <div className="text-xs text-foreground/60 mt-1">
+                  Sessions
+                </div>
+              </div>
+              <div className="bg-secondary/10 rounded-2xl p-4 text-center">
+                <div className="text-2xl font-bold text-secondary">
+                  {rewards.currentStreak}
+                </div>
+                <div className="text-xs text-foreground/60 mt-1">
+                  Série
+                </div>
+              </div>
+              <div className="bg-accent/10 rounded-2xl p-4 text-center">
+                <div className="text-2xl font-bold text-foreground">
+                  {formatFocusTime(rewards.totalFocusSeconds)}
+                </div>
+                <div className="text-xs text-foreground/60 mt-1">
+                  Travail
+                </div>
+              </div>
             </div>
           </motion.div>
         )}
